@@ -533,10 +533,17 @@ main (int argc, char *argv[])
                     usbvideo.c_str(), (w==1920 && h==1080 && std::string(target) == "dp" ? "stride-align=256" : ""), w, h );
         }
 
+        // VVAS 3.0 COMPATIBILITY:
+        // This pipeline uses VVAS 3.0 compatible plugins:
+        // - vvas_xmultisrc: For preprocessing (replaces deprecated vvas_xpreprocessor)
+        // - vvas_xinfer: For AI inference with libvvascore_dpuinfer-1.0.so (VVAS 3.0 core library)
+        // - vvas_xmetaaffixer: For metadata synchronization
+        // - vvas_xfilter: For custom rendering with libvvas_airender.so (VVAS 3.0 GstInferenceMeta API)
+        // Note: vvas_xinfer uses infer-config property, vvas_xfilter uses kernels-config property
         if (!nodet) {
             sprintf(pip + strlen(pip), " ! tee name=t \
                     ! queue ! vvas_xmultisrc kconfig=\"%s/preprocess.json\" \
-                    ! queue ! vvas_xfilter kernels-config=\"%s/aiinference.json\" \
+                    ! queue ! vvas_xinfer infer-config=\"%s/aiinference.json\" \
                     ! ima.sink_master \
                     vvas_xmetaaffixer name=ima ima.src_master ! fakesink \
                     t. \

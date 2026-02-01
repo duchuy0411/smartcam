@@ -140,16 +140,8 @@ int32_t xlnx_kernel_init(VVASKernel *handle)
     else
         kernel_priv->log_level = json_integer_value (val);
 
-
-
-    kernel_priv->params = vvas_alloc_buffer (handle, 6*(sizeof(float)), VVAS_INTERNAL_MEMORY, DEFAULT_MEM_BANK, NULL);
-    pPtr = kernel_priv->params->vaddr[0];
-    pPtr[0] = (float)kernel_priv->mean_r;  
-    pPtr[1] = (float)kernel_priv->mean_g;  
-    pPtr[2] = (float)kernel_priv->mean_b;  
-    pPtr[3] = (float)kernel_priv->scale_r;  
-    pPtr[4] = (float)kernel_priv->scale_g;  
-    pPtr[5] = (float)kernel_priv->scale_b;  
+    /* Defer buffer allocation to xlnx_kernel_start() when XRT context is ready */
+    kernel_priv->params = NULL;
 
     handle->kernel_priv = (void *)kernel_priv;
 
@@ -159,7 +151,45 @@ int32_t xlnx_kernel_init(VVASKernel *handle)
 int32_t xlnx_kernel_start(VVASKernel *handle, int start, VVASFrame *input[MAX_NUM_OBJECT], VVASFrame *output[MAX_NUM_OBJECT])
 {
     ResizeKernelPriv *kernel_priv;
+    float *pPtr;
     kernel_priv = (ResizeKernelPriv *)handle->kernel_priv;
+
+    LOG_MESSAGE (LOG_LEVEL_INFO, "Preprocess: xlnx_kernel_start() called with start=%d", start);
+    LOG_MESSAGE (LOG_LEVEL_INFO, "Preprocess: input[0]=%p output[0]=%p", 
+        (void*)input[0], (void*)output[0]);
+
+    /* Allocate parameter buffer on first frame (XRT context is now ready) */
+    if (!kernel_priv->params) {
+        LOG_MESSAGE (LOG_LEVEL_INFO, "Preprocess: allocating parameter buffer (first frame)...");
+        kernel_priv->params = vvas_alloc_buffer (handle, 6*(sizeof(float)), 
+                                                 VVAS_INTERNAL_MEMORY, DEFAULT_MEM_BANK, NULL);
+        if (!kernel_priv->params) {
+            LOG_MESSAGE (LOG_LEVEL_ERROR, "Preprocess: failed to allocate parameter buffer");
+            return -1;
+        }
+        pPtr = kernel_priv->params->vaddr[0];
+        pPtr[0] = (float)kernel_priv->mean_r;  
+        pPtr[1] = (float)kernel_priv->mean_g;  
+        pPtr[2] = (float)kernel_priv->mean_b;  
+        pPtr[3] = (float)kernel_priv->scale_r;  
+        pPtr[4] = (float)kernel_priv->scale_g;  
+        pPtr[5] = (float)kernel_priv->scale_b;
+        LOG_MESSAGE (LOG_LEVEL_INFO, "Preprocess: allocated parameter buffer");
+    }
+
+    /* Debug: Log buffer properties before kernel execution */
+    LOG_MESSAGE (LOG_LEVEL_INFO, "Preprocess: INPUT props - width=%u height=%u stride=%u fmt=%u", 
+        input[0]->props.width, input[0]->props.height, input[0]->props.stride, input[0]->props.fmt);
+    LOG_MESSAGE (LOG_LEVEL_INFO, "Preprocess: OUTPUT props - width=%u height=%u stride=%u fmt=%u", 
+        output[0]->props.width, output[0]->props.height, output[0]->props.stride, output[0]->props.fmt);
+    LOG_MESSAGE (LOG_LEVEL_INFO, "Preprocess: INPUT paddr[0]=0x%lx paddr[1]=0x%lx", 
+        (unsigned long)input[0]->paddr[0], (unsigned long)input[0]->paddr[1]);
+    LOG_MESSAGE (LOG_LEVEL_INFO, "Preprocess: OUTPUT paddr[0]=0x%lx", 
+        (unsigned long)output[0]->paddr[0]);
+    LOG_MESSAGE (LOG_LEVEL_INFO, "Preprocess: PARAMS paddr[0]=0x%lx (mean_r=%.1f mean_g=%.1f mean_b=%.1f scale_r=%.3f scale_g=%.3f scale_b=%.3f)", 
+        (unsigned long)kernel_priv->params->paddr[0],
+        kernel_priv->mean_r, kernel_priv->mean_g, kernel_priv->mean_b,
+        kernel_priv->scale_r, kernel_priv->scale_g, kernel_priv->scale_b);
 
     int ret = vvas_kernel_start (handle, "ppppuuuuuu", 
         (input[0]->paddr[0]),
@@ -171,19 +201,21 @@ int32_t xlnx_kernel_start(VVASKernel *handle, int start, VVASFrame *input[MAX_NU
         (input[0]->props.stride),
         (output[0]->props.width),
         (output[0]->props.height),
-        (output[0]->props.width)
+        (output[0]->props.stride)
         );
     if (ret < 0) {
       LOG_MESSAGE (LOG_LEVEL_ERROR, "Preprocess: failed to issue execute command");
       return ret;
     }
+    LOG_MESSAGE (LOG_LEVEL_INFO, "Preprocess: kernel execute command issued successfully, waiting for completion...");
 
     /* wait for kernel completion */
     ret = vvas_kernel_done (handle, 1000);
     if (ret < 0) {
-      LOG_MESSAGE (LOG_LEVEL_ERROR, "Preprocess: failed to receive response from kernel");
+      LOG_MESSAGE (LOG_LEVEL_ERROR, "Preprocess: failed to receive response from kernel (timeout after 1000ms)");
       return ret;
     }
+    LOG_MESSAGE (LOG_LEVEL_INFO, "Preprocess: kernel execution completed successfully");
 
     return 0;
 }
