@@ -21,7 +21,8 @@
 #include <iostream>
 #include <sstream>
 #include <math.h>
-/* VVAS 3.0: Must include glib.h BEFORE VVAS headers to enable VVAS_GLIB_UTILS */
+/* VVAS 3.0: Define VVAS_GLIB_UTILS before including VVAS headers */
+#define VVAS_GLIB_UTILS
 #include <glib.h>
 #include <vvas/vvas_kernel.h>
 #include <gst/vvas/gstinferencemeta.h>
