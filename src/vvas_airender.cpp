@@ -21,6 +21,8 @@
 #include <iostream>
 #include <sstream>
 #include <math.h>
+/* VVAS 3.0: Must include glib.h BEFORE VVAS headers to enable VVAS_GLIB_UTILS */
+#include <glib.h>
 #include <vvas/vvas_kernel.h>
 #include <gst/vvas/gstinferencemeta.h>
 #include <vvas_core/vvas_infer_prediction.h>
@@ -154,13 +156,13 @@ overlay_node_foreach (GNode * node, gpointer kpriv_ptr)
   VvasInferPrediction *vvas_pred = &(prediction->prediction);
   VvasList *classes = vvas_pred->classifications;
 
-  /* VVAS 3.0: Use VvasList iteration instead of GList */
-  VvasListIter iter;
-  vvas_list_iter_init (classes, &iter);
+  /* VVAS 3.0: Iterate VvasList directly using pointer traversal */
+  VvasList *iter = classes;
   
-  while (vvas_list_iter_next (&iter)) {
+  while (iter) {
     VvasInferClassification *vvas_class = 
-        (VvasInferClassification *) vvas_list_iter_get (&iter);
+        (VvasInferClassification *) iter->data;
+    iter = iter->next;
 
     int idx = vvas_classification_is_allowed ((char *)
         vvas_class->class_label, kpriv);
