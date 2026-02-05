@@ -1,27 +1,21 @@
 {
-  "xclbin-location": "/lib/firmware/xilinx/kv260-smartcam/kv260-smartcam.xclbin",
+  "xclbin-location":"/usr/lib/dpu.xclbin",
   "vvas-library-repo": "/opt/xilinx/kv260-smartcam/lib",
-  "element-mode": "inplace",
-  "kernel": {
-    "kernel-name": "pp_pipeline_accel:{pp_pipeline_accel_1}",
-    "kernel-access-mode": "shared",
-    "library-name": "libvvas_airender.so",
-    "config": {
-      "fps_interval": 10,
-      "font_size": 2,
-      "font": 3,
-      "thickness": 2,
-      "debug_level": 0,
-      "label_color": {
-        "blue": 0,
-        "green": 0,
-        "red": 255
-      },
-      "label_filter": [
-        "class",
-        "probability"
-      ],
-      "classes": []
+  "element-mode":"inplace",
+  "kernels" :[
+    {
+      "library-name":"libvvas_airender.so",
+      "config": {
+          "fps_interval" : 10,
+          "font_size" : 2,
+          "font" : 3,
+          "thickness" : 2,
+          "debug_level" : 0,
+          "label_color" : { "blue" : 0, "green" : 0, "red" : 255 },
+          "label_filter" : [ "class", "probability" ],
+          "classes" : [
+          ]
+      }
     }
-  }
+  ]
 }

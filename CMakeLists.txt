@@ -27,19 +27,34 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 find_package(GStreamer REQUIRED)
 find_package(OpenCV REQUIRED)
 
+# VVAS 3.0: Use pkg-config for VVAS libraries
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(VVAS_CORE REQUIRED vvas-core)
+pkg_check_modules(VVAS_UTILS REQUIRED vvas-utils)
+
 SET(INSTALL_PATH "opt/xilinx/kv260-smartcam")
 
 add_library(vvas_xpp SHARED src/vvas_xpp_pipeline.c)
-target_include_directories(vvas_xpp PRIVATE ${GSTREAMER_INCLUDE_DIRS})
+target_include_directories(vvas_xpp PRIVATE 
+  ${GSTREAMER_INCLUDE_DIRS}
+  ${VVAS_CORE_INCLUDE_DIRS}
+  ${VVAS_UTILS_INCLUDE_DIRS})
 target_link_libraries(vvas_xpp
-  jansson vvasutil-3.0 gstvvasinfermeta-3.0 vvascore_utils-1.0)
+  jansson vvasutil-3.0 gstvvasinfermeta-3.0
+  ${VVAS_CORE_LIBRARIES}
+  ${VVAS_UTILS_LIBRARIES})
 install(TARGETS vvas_xpp DESTINATION ${INSTALL_PATH}/lib)
 
 add_library(vvas_airender SHARED src/vvas_airender.cpp)
-target_compile_definitions(vvas_airender PRIVATE VVAS_GLIB_UTILS)
-target_include_directories(vvas_airender PRIVATE ${GSTREAMER_INCLUDE_DIRS})
+target_include_directories(vvas_airender PRIVATE 
+  ${GSTREAMER_INCLUDE_DIRS}
+  ${VVAS_CORE_INCLUDE_DIRS}
+  ${VVAS_UTILS_INCLUDE_DIRS})
+# VVAS 3.0: Updated library versions and dependencies for metadata structures
 target_link_libraries(vvas_airender 
-    jansson vvasutil-3.0 gstvvasinfermeta-3.0 vvascore_utils-1.0
+    jansson vvasutil-3.0 gstvvasinfermeta-3.0
+    ${VVAS_CORE_LIBRARIES}
+    ${VVAS_UTILS_LIBRARIES}
     gstreamer-1.0 gstbase-1.0 glib-2.0
     opencv_core opencv_video opencv_videoio opencv_imgproc)
 install(TARGETS vvas_airender DESTINATION ${INSTALL_PATH}/lib)

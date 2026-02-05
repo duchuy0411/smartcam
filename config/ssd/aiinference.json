@@ -1,21 +1,18 @@
 {
-  "vvas-library-repo": "/usr/lib/",
+  "attach-ppe-outbuf": false,
   "inference-level": 1,
-  "inference-max-queue": 4,
-  "low-latency": true,
+  "low-latency": false,
+  "inference-max-queue": 0,
   "kernel": {
-    "kernel-name": "dpuinfer",
-    "library-name": "libvvascore_dpuinfer-1.0.so",
     "config": {
+      "batch-size": 1,
       "model-name": "ssd_adas_pruned_0_95",
       "model-class": "SSD",
       "model-format": "BGR",
       "model-path": "/opt/xilinx/kv260-smartcam/share/vitis_ai_library/models/",
-      "batch-size": 1,
-      "run_time_model": false,
-      "need_preprocess": false,
-      "performance_test": false,
-      "debug_level": 1
+      "vitis-ai-preprocess": false,
+      "performance-test": false,
+      "debug-level": 0
     }
   }
 }
