@@ -540,12 +540,12 @@ main (int argc, char *argv[])
                     ! ima.sink_master \
                     vvas_xmetaaffixer name=ima ima.src_master ! fakesink \
                     t. \
-                    ! queue max-size-buffers=1 leaky=%d ! ima.sink_slave_0 ima.src_slave_0 ! queue ! vvas_xfilter kernels-config=\"%s/drawresult.json\" ",
+                    ! queue max-size-buffers=1 leaky=%d ! ima.sink_slave_0 ima.src_slave_0 ! queue ! vvas_xmetaconvert config-location=\"%s/metaconvert.json\" ! vvas_xoverlay ",
                     confdir.c_str(),
                     confdir.c_str(),
                     filename? 0 : 2, confdir.c_str());
         } else if (screenfps){
-            sprintf( pip + strlen(pip), " ! queue ! vvas_xfilter kernels-config=\"%s/drawresult.json\" ", confdir.c_str() );
+            sprintf( pip + strlen(pip), " ! queue ! vvas_xmetaconvert config-location=\"%s/metaconvert.json\" ! vvas_xoverlay ", confdir.c_str() );
         }
     }
 
