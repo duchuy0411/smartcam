@@ -9,6 +9,11 @@
     "y-offset": 0,
     "draw-above-bbox-flag": true,
     "label-filter": ["class", "probability"],
+    "label-color": {
+      "blue": 0,
+      "green": 255,
+      "red": 255
+    },
     "classes": []
   }
 }

@@ -322,7 +322,7 @@ fps_overlay(gpointer kpriv_ptr)
           kpriv->fps = kpriv->framecount * 1e3 / duration ;
       }
 
-      color clr = {255, 0, 0};
+      color clr = {0, 255, 255};  /* Yellow in BGR */
       int new_xmin = 50;
       int new_ymin = 50;
 
