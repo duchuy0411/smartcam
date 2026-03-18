@@ -1,9 +1,9 @@
 {
   "config": {
     "display-level": 0,
-    "font-size": 2,
+    "font-size": 3,
     "font": 3,
-    "thickness": 2,
+    "thickness": 3,
     "radius": 5,
     "mask-level": 0,
     "y-offset": 0,

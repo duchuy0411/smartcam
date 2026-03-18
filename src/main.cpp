@@ -60,6 +60,9 @@ static gboolean audio = FALSE;
 static gboolean reportFps = FALSE;
 static gboolean screenfps = FALSE;
 static gboolean roiOff = FALSE;
+static gdouble brightness = 0.0;
+static gdouble contrast = 1.0;
+static gdouble saturation = 1.0;
 static GOptionEntry entries[] =
 {
     { "mipi", 'm', 0, G_OPTION_ARG_NONE, &mipi, "use MIPI camera as input source, auto detect, fail if no mipi connected", ""},
@@ -81,6 +84,9 @@ static GOptionEntry entries[] =
     { "report", 'R', 0, G_OPTION_ARG_NONE, &reportFps, "report fps", NULL },
     { "screenfps", 's', 0, G_OPTION_ARG_NONE, &screenfps, "display fps on screen, notice this will cause performance degradation", NULL },
     { "ROI-off", 0, 0, G_OPTION_ARG_NONE, &roiOff, "turn off ROI", NULL },
+    { "brightness", 0, 0, G_OPTION_ARG_DOUBLE, &brightness, "videobalance brightness adjustment", "0.0" },
+    { "contrast", 0, 0, G_OPTION_ARG_DOUBLE, &contrast, "videobalance contrast adjustment", "1.0" },
+    { "saturation", 0, 0, G_OPTION_ARG_DOUBLE, &saturation, "videobalance saturation adjustment", "1.0" },
 
     { "control-rate", 0, 0, G_OPTION_ARG_STRING, &controlRate, "Encoder parameter control-rate", "low-latency" },
     { "target-bitrate", 0, 0, G_OPTION_ARG_STRING, &targetBitrate, "Encoder parameter target-bitrate", targetBitrate},
@@ -533,6 +539,12 @@ main (int argc, char *argv[])
                     usbvideo.c_str(), (w==1920 && h==1080 && std::string(target) == "dp" ? "stride-align=256" : ""), w, h );
         }
 
+        if (!filename && (brightness != 0.0 || contrast != 1.0 || saturation != 1.0)) {
+            sprintf(pip + strlen(pip),
+                " ! videobalance brightness=%lf contrast=%lf saturation=%lf ",
+                brightness, contrast, saturation);
+        }
+
         if (!nodet) {
             sprintf(pip + strlen(pip), " ! tee name=t \
                     ! queue ! vvas_xmultisrc kconfig=\"%s/preprocess.json\" \
@@ -567,6 +579,7 @@ main (int argc, char *argv[])
         else
         {
         sprintf(pip + strlen(pip), " \
+            ! video/x-raw, width=%d, height=%d, format=NV12, framerate=%d/1, colorimetry=bt709 \
                 %s \
                 ! queue ! omx%senc \
                 qp-mode=%s  \
@@ -575,6 +588,7 @@ main (int argc, char *argv[])
                 ! video/x-%s, alignment=au\
                 %s%s %s%s %s%s \
                 ",
+                w, h, fr,
                 roiOff ? "" : " ! queue ! vvas_xroigen roi-type=1 roi-qp-delta=-10 roi-max-num=10 ",
                 outMediaType,
                 roiOff ? "auto" : "1",

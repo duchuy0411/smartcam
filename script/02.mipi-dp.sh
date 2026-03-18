@@ -16,6 +16,11 @@
 
 w=${1:-"1920"} h=${2:-"1080"}
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+EXTRA_ARGS=()
 
-${DIR}/smartcam --mipi --target dp  --width ${w} --height ${h} 
+[[ -n "${BRIGHTNESS:-}" ]] && EXTRA_ARGS+=(--brightness "${BRIGHTNESS}")
+[[ -n "${CONTRAST:-}" ]] && EXTRA_ARGS+=(--contrast "${CONTRAST}")
+[[ -n "${SATURATION:-}" ]] && EXTRA_ARGS+=(--saturation "${SATURATION}")
+
+${DIR}/smartcam --mipi --target dp  --width ${w} --height ${h} "${EXTRA_ARGS[@]}"
 
