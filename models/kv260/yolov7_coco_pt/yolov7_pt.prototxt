@@ -1,0 +1,37 @@
+model {
+  kernel {
+     mean: 0.0
+     mean: 0.0
+     mean: 0.0
+     scale: 0.00392156
+     scale: 0.00392156
+     scale: 0.00392156
+  }
+  model_type:YOLOv7
+  yolo_v7_param {
+    num_classes: 80
+    detect_layer_name: "ModuleList_0"   
+    detect_layer_name: "ModuleList_1"  
+    detect_layer_name: "ModuleList_2"  
+    conf_thresh: 0.5
+    nms_threshold: 0.65
+    biases: 12 #
+    biases: 16
+    biases: 19
+    biases: 36
+    biases: 40 
+    biases: 28
+    biases: 36 #
+    biases: 75
+    biases: 76
+    biases: 55 
+    biases: 72
+    biases: 146
+    biases: 142 #
+    biases: 110
+    biases: 192
+    biases: 243
+    biases: 459 
+    biases: 401
+  }
+}

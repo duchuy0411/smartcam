@@ -1,0 +1,18 @@
+{
+  "attach-ppe-outbuf": false,
+  "inference-level": 1,
+  "low-latency": false,
+  "inference-max-queue": 0,
+  "kernel": {
+    "config": {
+      "batch-size": 1,
+      "model-name": "yolov7_coco_pt",
+      "model-class": "YOLOV3",
+      "model-format": "BGR",
+      "model-path": "/opt/xilinx/kv260-smartcam/share/vitis_ai_library/models/",
+      "vitis-ai-preprocess": false,
+      "performance-test": false,
+      "debug-level": 0
+    }
+  }
+}

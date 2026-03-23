@@ -1,0 +1,39 @@
+{
+  "config": {
+    "display-level": 0,
+    "font-size": 2,
+    "font": 3,
+    "thickness": 2,
+    "radius": 5,
+    "mask-level": 0,
+    "y-offset": 0,
+    "draw-above-bbox-flag": true,
+    "label_color" : { "blue" : 0, "green" : 0, "red" : 255 },
+    "label-filter": ["class", "probability"],
+    "classes" : [
+                {
+                "name" : "car",
+                "blue" : 255,
+                "green" : 0,
+                "red" : 0
+                },
+                {
+                "name" : "person",
+                "blue" : 0,
+                "green" : 255,
+                "red" : 0
+                },
+                {
+                "name" : "truck",
+                "blue" : 128,
+                "green" : 255,
+                "red" : 0
+                },
+                {
+                "name" : "bicycle",
+                "blue" : 0,
+                "green" : 0,
+                "red" : 255
+                }]
+  }
+}
