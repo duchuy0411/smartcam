@@ -1,5 +1,5 @@
     {
-     "model-name": "yolov7_pt",
+     "model-name": "yolov7_coco_pt",
      "num-labels": 80,
      "labels": [
       {
