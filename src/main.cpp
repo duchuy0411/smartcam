@@ -18,6 +18,8 @@
 #include <gst/gst.h>
 #include <gst/rtsp-server/rtsp-server.h>
 #include <string>
+#include <cstdarg>
+#include <cstring>
 #include <array>
 #include <vector>
 #include <sstream>
@@ -145,6 +147,56 @@ static std::string exec(const char* cmd) {
         result += buffer.data();
     }
     return result;
+}
+
+static gboolean GstFactoryExists(const char *factory)
+{
+    GstElementFactory *f = gst_element_factory_find(factory);
+    if (f) {
+        gst_object_unref(f);
+        return TRUE;
+    }
+    return FALSE;
+}
+
+static std::string SelectDecoder(const gchar *codec)
+{
+    std::string c = codec ? codec : "h264";
+
+    if (c == "h264") {
+        if (GstFactoryExists("omxh264dec")) return "omxh264dec";
+        if (GstFactoryExists("v4l2h264dec")) return "v4l2h264dec";
+        if (GstFactoryExists("v4l2slh264dec")) return "v4l2slh264dec";
+    } else if (c == "h265") {
+        if (GstFactoryExists("omxh265dec")) return "omxh265dec";
+        if (GstFactoryExists("v4l2h265dec")) return "v4l2h265dec";
+        if (GstFactoryExists("v4l2slh265dec")) return "v4l2slh265dec";
+    }
+
+    return "decodebin";
+}
+
+static void AppendPipe(char *pipe, size_t pipe_size, const char *fmt, ...)
+{
+    size_t used = strlen(pipe);
+    if (used >= pipe_size - 1) {
+        return;
+    }
+
+    va_list ap;
+    va_start(ap, fmt);
+    int written = vsnprintf(pipe + used, pipe_size - used, fmt, ap);
+    va_end(ap);
+
+    if (written < 0) {
+        pipe[used] = '\0';
+        return;
+    }
+
+    if ((size_t)written >= (pipe_size - used)) {
+        pipe[pipe_size - 1] = '\0';
+        g_printerr("Warning: pipeline string truncated\n");
+    }
 }
 
 static std::vector<std::string> GetIp()
@@ -518,16 +570,17 @@ main (int argc, char *argv[])
         sprintf(pip + strlen(pip), "( ");
     }
     {
+        const std::string decoder = SelectDecoder(infileType);
         if (filename) {
-            sprintf(pip + strlen(pip), 
-                    "%s location=%s ! %sparse ! queue ! omx%sdec ! video/x-raw, width=%d, height=%d, format=NV12, framerate=%d/1 ", 
+            sprintf(pip + strlen(pip),
+                    "%s location=%s ! %sparse ! queue ! %s ! video/x-raw, width=%d, height=%d, format=NV12, framerate=%d/1 ",
                     (std::string(target) == "file") ? "filesrc" : "multifilesrc",
-                    filename, infileType, infileType, w, h, fr);
+                    filename, infileType, decoder.c_str(), w, h, fr);
         } else if (mipidev != "") {
-            sprintf(pip + strlen(pip), 
-                    "mediasrcbin name=videosrc media-device=%s %s !  video/x-raw, width=%d, height=%d, format=NV12, framerate=%d/1 ", mipidev.c_str(), (w==1920 && h==1080 && std::string(target) == "dp" ? " v4l2src0::io-mode=dmabuf v4l2src0::stride-align=256" : ""), w, h, fr);
+            sprintf(pip + strlen(pip),
+                    "mediasrcbin name=videosrc media-device=%s %s !  video/x-raw, width=%d, height=%d, format=NV12, framerate=%d/1 ", mipidev.c_str(), (w==1920 && h==1080 && std::string(target) == "dp" ? " v4l2src0::io-mode=mmap" : ""), w, h, fr);
         } else if (usbvideo != "") {
-            sprintf(pip + strlen(pip), 
+            sprintf(pip + strlen(pip),
                     "v4l2src name=videosrc device=%s io-mode=mmap %s !  video/x-raw, width=%d, height=%d ! videoconvert \
                     ! video/x-raw, format=NV12",
                     usbvideo.c_str(), (w==1920 && h==1080 && std::string(target) == "dp" ? "stride-align=256" : ""), w, h );
@@ -545,7 +598,7 @@ main (int argc, char *argv[])
                     confdir.c_str(),
                     filename? 0 : 2, confdir.c_str());
         } else if (screenfps){
-            sprintf( pip + strlen(pip), " ! queue ! vvas_xfilter kernels-config=\"%s/drawresult.json\" ", confdir.c_str() );
+            sprintf(pip + strlen(pip), " ! queue ! vvas_xfilter kernels-config=\"%s/drawresult.json\" ", confdir.c_str());
         }
     }
 

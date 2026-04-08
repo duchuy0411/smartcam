@@ -15,37 +15,10 @@
  */
 
 #include <vvas/vvas_kernel.h>
+#include <vvas/vvaslogs.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
-
-enum
-{
-  LOG_LEVEL_ERROR,
-  LOG_LEVEL_WARNING,
-  LOG_LEVEL_INFO,
-  LOG_LEVEL_DEBUG
-};
-
-#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
-#define LOG_MESSAGE(level, ...) {\
-  do {\
-    char *str; \
-    if (level == LOG_LEVEL_ERROR)\
-      str = (char*)"ERROR";\
-    else if (level == LOG_LEVEL_WARNING)\
-      str = (char*)"WARNING";\
-    else if (level == LOG_LEVEL_INFO)\
-      str = (char*)"INFO";\
-    else if (level == LOG_LEVEL_DEBUG)\
-      str = (char*)"DEBUG";\
-    if (level <= kernel_priv->log_level) {\
-      printf("[%s %s:%d] %s: ",__FILENAME__, __func__, __LINE__, str);\
-      printf(__VA_ARGS__);\
-      printf("\n");\
-    }\
-  } while (0); \
-}
 
 typedef struct _kern_priv
 {
@@ -174,14 +147,14 @@ int32_t xlnx_kernel_start(VVASKernel *handle, int start, VVASFrame *input[MAX_NU
         (output[0]->props.width)
         );
     if (ret < 0) {
-      LOG_MESSAGE (LOG_LEVEL_ERROR, "Preprocess: failed to issue execute command");
+      LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "Preprocess: failed to issue execute command");
       return ret;
     }
 
     /* wait for kernel completion */
     ret = vvas_kernel_done (handle, 1000);
     if (ret < 0) {
-      LOG_MESSAGE (LOG_LEVEL_ERROR, "Preprocess: failed to receive response from kernel");
+      LOG_MESSAGE (LOG_LEVEL_ERROR, kernel_priv->log_level, "Preprocess: failed to receive response from kernel");
       return ret;
     }
 

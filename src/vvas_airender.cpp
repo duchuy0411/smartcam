@@ -21,8 +21,14 @@
 #include <iostream>
 #include <sstream>
 #include <math.h>
+/* VVAS 3.0: Define VVAS_GLIB_UTILS before including VVAS headers */
+#define VVAS_GLIB_UTILS
+#include <glib.h>
 #include <vvas/vvas_kernel.h>
 #include <gst/vvas/gstinferencemeta.h>
+#include <vvas_core/vvas_infer_prediction.h>
+#include <vvas_core/vvas_infer_classification.h>
+#include <vvas_utils/vvas_utils.h>
 #include <chrono>
 
 #include "vvas_airender.hpp"
@@ -121,15 +127,16 @@ get_label_text (GstInferenceClassification * c, vvas_xoverlaypriv * kpriv,
     char *label_string)
 {
   unsigned char idx = 0, buffIdx = 0;
-  if (!c->class_label || !strlen ((char *) c->class_label))
+  /* VVAS 3.0: Access through .classification wrapper */
+  if (!c->classification.class_label || !strlen ((char *) c->classification.class_label))
     return false;
 
   for (idx = 0; idx < kpriv->label_filter_cnt; idx++) {
     if (!strcmp (kpriv->label_filter[idx], "class")) {
-      sprintf (label_string + buffIdx, "%s", (char *) c->class_label);
+      sprintf (label_string + buffIdx, "%s", (char *) c->classification.class_label);
       buffIdx += strlen (label_string);
     } else if (!strcmp (kpriv->label_filter[idx], "probability")) {
-      sprintf (label_string + buffIdx, " : %.2f ", c->class_prob);
+      sprintf (label_string + buffIdx, " : %.2f ", c->classification.class_prob);
       buffIdx += strlen (label_string);
     }
   }
@@ -143,17 +150,23 @@ overlay_node_foreach (GNode * node, gpointer kpriv_ptr)
   struct overlayframe_info *frameinfo = &(kpriv->frameinfo);
   LOG_MESSAGE (LOG_LEVEL_DEBUG, "enter");
 
-  GList *classes;
   GstInferenceClassification *classification;
   GstInferencePrediction *prediction = (GstInferencePrediction *) node->data;
+  
+  /* VVAS 3.0: Access through .prediction wrapper */
+  VvasInferPrediction *vvas_pred = &(prediction->prediction);
+  VvasList *classes = vvas_pred->classifications;
 
-  /* On each children, iterate through the different associated classes */
-  for (classes = prediction->classifications;
-      classes; classes = g_list_next (classes)) {
-    classification = (GstInferenceClassification *) classes->data;
+  /* VVAS 3.0: Iterate VvasList directly using pointer traversal */
+  VvasList *iter = classes;
+  
+  while (iter) {
+    VvasInferClassification *vvas_class = 
+        (VvasInferClassification *) iter->data;
+    iter = iter->next;
 
     int idx = vvas_classification_is_allowed ((char *)
-        classification->class_label, kpriv);
+        vvas_class->class_label, kpriv);
     if (kpriv->classes_count && idx == -1)
       continue;
 
@@ -164,38 +177,46 @@ overlay_node_foreach (GNode * node, gpointer kpriv_ptr)
             kpriv->class_list[idx].class_color.green,
             kpriv->class_list[idx].class_color.red};
     } else {
-      /* If there are no classes specified, we will go with default blue */
+      /* If there are no classes specified, use green for better visibility */
       clr = {
-      255, 0, 0};
+      0, 255, 0};  /* Green in BGR */
     }
 
     char label_string[MAX_LABEL_LEN];
     bool label_present;
     Size textsize;
-    label_present = get_label_text (classification, kpriv, label_string);
+    /* VVAS 3.0: Wrap GstInferenceClassification for get_label_text */
+    GstInferenceClassification gst_class;
+    gst_class.classification = *vvas_class;
+    label_present = get_label_text (&gst_class, kpriv, label_string);
 
     if (label_present) {
       int baseline;
       textsize = getTextSize (label_string, kpriv->font,
           kpriv->font_size, 1, &baseline);
-      /* Get y offset to use in case of classification model */
-      if ((prediction->bbox.height < 1) && (prediction->bbox.width < 1)) {
+      /* Initialize y_offset for label placement */
+      /* VVAS 3.0: Access bbox through wrapper */
+      if ((vvas_pred->bbox.height < 1) && (vvas_pred->bbox.width < 1)) {
+        /* Classification model - offset from top */
         if (kpriv->y_offset) {
           frameinfo->y_offset = kpriv->y_offset;
         } else {
           frameinfo->y_offset = (frameinfo->inframe->props.height * 0.10);
         }
+      } else {
+        /* Detection model - position label above bbox */
+        frameinfo->y_offset = -5;
       }
     }
 
     LOG_MESSAGE (LOG_LEVEL_INFO,
-        "RESULT: (prediction node %ld) %s(%d) %d %d %d %d (%f)",
-        prediction->prediction_id,
-        label_present ? classification->class_label : NULL,
-        classification->class_id, prediction->bbox.x, prediction->bbox.y,
-        prediction->bbox.width + prediction->bbox.x,
-        prediction->bbox.height + prediction->bbox.y,
-        classification->class_prob);
+        "RESULT: (prediction node %lu) %s(%d) %d %d %d %d (%f)",
+        vvas_pred->prediction_id,
+        label_present ? vvas_class->class_label : NULL,
+        vvas_class->class_id, vvas_pred->bbox.x, vvas_pred->bbox.y,
+        vvas_pred->bbox.width + vvas_pred->bbox.x,
+        vvas_pred->bbox.height + vvas_pred->bbox.y,
+        vvas_class->class_prob);
 
     /* Check whether the frame is NV12 or BGR and act accordingly */
     if (frameinfo->inframe->props.fmt == VVAS_VFMT_Y_UV8_420) {
@@ -204,15 +225,17 @@ overlay_node_foreach (GNode * node, gpointer kpriv_ptr)
       unsigned short uvScalar;
       convert_rgb_to_yuv_clrs (clr, &yScalar, &uvScalar);
       /* Draw rectangle on y an uv plane */
-      int new_xmin = floor (prediction->bbox.x / 2) * 2;
-      int new_ymin = floor (prediction->bbox.y / 2) * 2;
+      /* VVAS 3.0: Access bbox through wrapper */
+      int new_xmin = floor (vvas_pred->bbox.x / 2) * 2;
+      int new_ymin = floor (vvas_pred->bbox.y / 2) * 2;
       int new_xmax =
-          floor ((prediction->bbox.width + prediction->bbox.x) / 2) * 2;
+          floor ((vvas_pred->bbox.width + vvas_pred->bbox.x) / 2) * 2;
       int new_ymax =
-          floor ((prediction->bbox.height + prediction->bbox.y) / 2) * 2;
+          floor ((vvas_pred->bbox.height + vvas_pred->bbox.y) / 2) * 2;
       Size test_rect (new_xmax - new_xmin, new_ymax - new_ymin);
 
-      if (!(!prediction->bbox.x && !prediction->bbox.y)) {
+      /* VVAS 3.0: Access bbox through wrapper */
+      if (!(!vvas_pred->bbox.x && !vvas_pred->bbox.y)) {
         rectangle (frameinfo->lumaImg, Point (new_xmin,
               new_ymin), Point (new_xmax,
               new_ymax), Scalar (yScalar), kpriv->line_thickness, 1, 0);
@@ -232,37 +255,38 @@ overlay_node_foreach (GNode * node, gpointer kpriv_ptr)
                     new_ymin / 2 - textsize.height), textsize),
             Scalar (uvScalar), FILLED, 1, 0);
 
-        /* Draw label text on the filled rectanngle */
+        /* Draw label text on filled rectangle - position ABOVE bbox */
         convert_rgb_to_yuv_clrs (kpriv->label_color, &yScalar, &uvScalar);
         putText (frameinfo->lumaImg, label_string, cv::Point (new_xmin,
-                new_ymin + frameinfo->y_offset), kpriv->font, kpriv->font_size,
+                new_ymin - 5), kpriv->font, kpriv->font_size,
             Scalar (yScalar), 1, 1);
         putText (frameinfo->chromaImg, label_string, cv::Point (new_xmin / 2,
-                new_ymin / 2 + frameinfo->y_offset / 2), kpriv->font,
+                new_ymin / 2 - 3), kpriv->font,
             kpriv->font_size / 2, Scalar (uvScalar), 1, 1);
       }
     } else if (frameinfo->inframe->props.fmt == VVAS_VFMT_BGR8) {
       LOG_MESSAGE (LOG_LEVEL_DEBUG, "Drawing rectangle for BGR image");
 
-      if (!(!prediction->bbox.x && !prediction->bbox.y)) {
+      /* VVAS 3.0: Access bbox through wrapper */
+      if (!(!vvas_pred->bbox.x && !vvas_pred->bbox.y)) {
         /* Draw rectangle over the dectected object */
-        rectangle (frameinfo->image, Point (prediction->bbox.x,
-              prediction->bbox.y),
-          Point (prediction->bbox.width + prediction->bbox.x,
-              prediction->bbox.height + prediction->bbox.y), Scalar (clr.blue,
+        rectangle (frameinfo->image, Point (vvas_pred->bbox.x,
+              vvas_pred->bbox.y),
+          Point (vvas_pred->bbox.width + vvas_pred->bbox.x,
+              vvas_pred->bbox.height + vvas_pred->bbox.y), Scalar (clr.blue,
               clr.green, clr.red), kpriv->line_thickness, 1, 0);
       }
 
       if (label_present) {
         /* Draw filled rectangle for label */
-        rectangle (frameinfo->image, Rect (Point (prediction->bbox.x,
-                    prediction->bbox.y - textsize.height), textsize),
+        rectangle (frameinfo->image, Rect (Point (vvas_pred->bbox.x,
+                    vvas_pred->bbox.y - textsize.height), textsize),
             Scalar (clr.blue, clr.green, clr.red), FILLED, 1, 0);
 
-        /* Draw label text on the filled rectanngle */
+        /* Draw label text on filled rectangle - position ABOVE bbox */
         putText (frameinfo->image, label_string,
-            cv::Point (prediction->bbox.x,
-                prediction->bbox.y + frameinfo->y_offset), kpriv->font,
+            cv::Point (vvas_pred->bbox.x,
+                vvas_pred->bbox.y - 5), kpriv->font,
             kpriv->font_size, Scalar (kpriv->label_color.blue,
                 kpriv->label_color.green, kpriv->label_color.red), 1, 1);
       }
@@ -549,7 +573,9 @@ extern "C"
     LOG_MESSAGE (LOG_LEVEL_DEBUG, "Prediction tree: \n%s", pstr);
     free (pstr);
 
-    g_node_traverse (infer_meta->prediction->predictions, G_PRE_ORDER,
+    /* VVAS 3.0: Access tree node through .prediction wrapper */
+    /* The tree structure is now VvasTreeNode but cast to GNode for traversal */
+    g_node_traverse ((GNode *)infer_meta->prediction->prediction.node, G_PRE_ORDER,
         G_TRAVERSE_ALL, -1, overlay_node_foreach, kpriv);
     }
 
