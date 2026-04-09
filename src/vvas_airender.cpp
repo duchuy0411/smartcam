@@ -177,9 +177,9 @@ overlay_node_foreach (GNode * node, gpointer kpriv_ptr)
             kpriv->class_list[idx].class_color.green,
             kpriv->class_list[idx].class_color.red};
     } else {
-      /* If there are no classes specified, use green for better visibility */
+      /* If there are no classes specified, we will go with default blue */
       clr = {
-      0, 255, 0};  /* Green in BGR */
+      255, 0, 0};
     }
 
     char label_string[MAX_LABEL_LEN];
@@ -194,23 +194,19 @@ overlay_node_foreach (GNode * node, gpointer kpriv_ptr)
       int baseline;
       textsize = getTextSize (label_string, kpriv->font,
           kpriv->font_size, 1, &baseline);
-      /* Initialize y_offset for label placement */
+      /* Get y offset to use in case of classification model */
       /* VVAS 3.0: Access bbox through wrapper */
       if ((vvas_pred->bbox.height < 1) && (vvas_pred->bbox.width < 1)) {
-        /* Classification model - offset from top */
         if (kpriv->y_offset) {
           frameinfo->y_offset = kpriv->y_offset;
         } else {
           frameinfo->y_offset = (frameinfo->inframe->props.height * 0.10);
         }
-      } else {
-        /* Detection model - position label above bbox */
-        frameinfo->y_offset = -5;
       }
     }
 
     LOG_MESSAGE (LOG_LEVEL_INFO,
-        "RESULT: (prediction node %lu) %s(%d) %d %d %d %d (%f)",
+        "RESULT: (prediction node %ld) %s(%d) %d %d %d %d (%f)",
         vvas_pred->prediction_id,
         label_present ? vvas_class->class_label : NULL,
         vvas_class->class_id, vvas_pred->bbox.x, vvas_pred->bbox.y,
@@ -255,13 +251,13 @@ overlay_node_foreach (GNode * node, gpointer kpriv_ptr)
                     new_ymin / 2 - textsize.height), textsize),
             Scalar (uvScalar), FILLED, 1, 0);
 
-        /* Draw label text on filled rectangle - position ABOVE bbox */
+        /* Draw label text on the filled rectanngle */
         convert_rgb_to_yuv_clrs (kpriv->label_color, &yScalar, &uvScalar);
         putText (frameinfo->lumaImg, label_string, cv::Point (new_xmin,
-                new_ymin - 5), kpriv->font, kpriv->font_size,
+                new_ymin + frameinfo->y_offset), kpriv->font, kpriv->font_size,
             Scalar (yScalar), 1, 1);
         putText (frameinfo->chromaImg, label_string, cv::Point (new_xmin / 2,
-                new_ymin / 2 - 3), kpriv->font,
+                new_ymin / 2 + frameinfo->y_offset / 2), kpriv->font,
             kpriv->font_size / 2, Scalar (uvScalar), 1, 1);
       }
     } else if (frameinfo->inframe->props.fmt == VVAS_VFMT_BGR8) {
@@ -283,10 +279,10 @@ overlay_node_foreach (GNode * node, gpointer kpriv_ptr)
                     vvas_pred->bbox.y - textsize.height), textsize),
             Scalar (clr.blue, clr.green, clr.red), FILLED, 1, 0);
 
-        /* Draw label text on filled rectangle - position ABOVE bbox */
+        /* Draw label text on the filled rectanngle */
         putText (frameinfo->image, label_string,
             cv::Point (vvas_pred->bbox.x,
-                vvas_pred->bbox.y - 5), kpriv->font,
+                vvas_pred->bbox.y + frameinfo->y_offset), kpriv->font,
             kpriv->font_size, Scalar (kpriv->label_color.blue,
                 kpriv->label_color.green, kpriv->label_color.red), 1, 1);
       }
