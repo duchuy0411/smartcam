@@ -2,10 +2,9 @@
   "xclbin-location":"/usr/lib/dpu.xclbin",
   "vvas-library-repo": "/opt/xilinx/kv260-smartcam/lib",
   "element-mode":"inplace",
-  "kernels" :[
-    {
-      "library-name":"libvvas_airender.so",
-      "config": {
+  "kernel": {
+    "library-name":"libvvas_airender.so",
+    "config": {
         "fps_interval" : 10,
         "font_size" : 2,
         "font" : 3,
@@ -32,7 +31,6 @@
                 "green" : 0,
                 "red" : 255
                 }]
-      }
     }
-  ]
+  }
 }
