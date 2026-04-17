@@ -123,20 +123,19 @@ convert_rgb_to_yuv_clrs (color clr, unsigned char *y, unsigned short *uv)
 
 /* Compose label text based on config json */
 bool
-get_label_text (GstInferenceClassification * c, vvas_xoverlaypriv * kpriv,
+get_label_text (VvasInferClassification * c, vvas_xoverlaypriv * kpriv,
     char *label_string)
 {
   unsigned char idx = 0, buffIdx = 0;
-  /* VVAS 3.0: Access through .classification wrapper */
-  if (!c->classification.class_label || !strlen ((char *) c->classification.class_label))
+  if (!c->class_label || !strlen ((char *) c->class_label))
     return false;
 
   for (idx = 0; idx < kpriv->label_filter_cnt; idx++) {
     if (!strcmp (kpriv->label_filter[idx], "class")) {
-      sprintf (label_string + buffIdx, "%s", (char *) c->classification.class_label);
+      sprintf (label_string + buffIdx, "%s", (char *) c->class_label);
       buffIdx += strlen (label_string);
     } else if (!strcmp (kpriv->label_filter[idx], "probability")) {
-      sprintf (label_string + buffIdx, " : %.2f ", c->classification.class_prob);
+      sprintf (label_string + buffIdx, " : %.2f ", c->class_prob);
       buffIdx += strlen (label_string);
     }
   }
@@ -150,7 +149,6 @@ overlay_node_foreach (GNode * node, gpointer kpriv_ptr)
   struct overlayframe_info *frameinfo = &(kpriv->frameinfo);
   LOG_MESSAGE (LOG_LEVEL_DEBUG, "enter");
 
-  GstInferenceClassification *classification;
   GstInferencePrediction *prediction = (GstInferencePrediction *) node->data;
   
   /* VVAS 3.0: Access through .prediction wrapper */
@@ -171,24 +169,24 @@ overlay_node_foreach (GNode * node, gpointer kpriv_ptr)
       continue;
 
     color clr;
-    if (kpriv->classes_count) {
-      clr = {
-      kpriv->class_list[idx].class_color.blue,
-            kpriv->class_list[idx].class_color.green,
-            kpriv->class_list[idx].class_color.red};
+    if (vvas_pred->bbox.box_color.alpha != 0) {
+      /* VVAS 3.0: use per-detection color from inference engine */
+      clr = {vvas_pred->bbox.box_color.blue,
+             vvas_pred->bbox.box_color.green,
+             vvas_pred->bbox.box_color.red};
+    } else if (kpriv->classes_count) {
+      clr = {kpriv->class_list[idx].class_color.blue,
+             kpriv->class_list[idx].class_color.green,
+             kpriv->class_list[idx].class_color.red};
     } else {
       /* If there are no classes specified, we will go with default blue */
-      clr = {
-      255, 0, 0};
+      clr = {255, 0, 0};
     }
 
     char label_string[MAX_LABEL_LEN];
     bool label_present;
     Size textsize;
-    /* VVAS 3.0: Wrap GstInferenceClassification for get_label_text */
-    GstInferenceClassification gst_class;
-    gst_class.classification = *vvas_class;
-    label_present = get_label_text (&gst_class, kpriv, label_string);
+    label_present = get_label_text (vvas_class, kpriv, label_string);
 
     if (label_present) {
       int baseline;
@@ -251,8 +249,11 @@ overlay_node_foreach (GNode * node, gpointer kpriv_ptr)
                     new_ymin / 2 - textsize.height), textsize),
             Scalar (uvScalar), FILLED, 1, 0);
 
-        /* Draw label text on the filled rectanngle */
-        convert_rgb_to_yuv_clrs (kpriv->label_color, &yScalar, &uvScalar);
+        /* VVAS 3.0: use per-class label color from inference when set */
+        color lbl_clr = (vvas_class->label_color.alpha != 0)
+            ? color{vvas_class->label_color.blue, vvas_class->label_color.green, vvas_class->label_color.red}
+            : kpriv->label_color;
+        convert_rgb_to_yuv_clrs (lbl_clr, &yScalar, &uvScalar);
         putText (frameinfo->lumaImg, label_string, cv::Point (new_xmin,
                 new_ymin + frameinfo->y_offset), kpriv->font, kpriv->font_size,
             Scalar (yScalar), 1, 1);
@@ -279,12 +280,14 @@ overlay_node_foreach (GNode * node, gpointer kpriv_ptr)
                     vvas_pred->bbox.y - textsize.height), textsize),
             Scalar (clr.blue, clr.green, clr.red), FILLED, 1, 0);
 
-        /* Draw label text on the filled rectanngle */
+        /* VVAS 3.0: use per-class label color from inference when set */
+        color lbl_clr = (vvas_class->label_color.alpha != 0)
+            ? color{vvas_class->label_color.blue, vvas_class->label_color.green, vvas_class->label_color.red}
+            : kpriv->label_color;
         putText (frameinfo->image, label_string,
             cv::Point (vvas_pred->bbox.x,
                 vvas_pred->bbox.y + frameinfo->y_offset), kpriv->font,
-            kpriv->font_size, Scalar (kpriv->label_color.blue,
-                kpriv->label_color.green, kpriv->label_color.red), 1, 1);
+            kpriv->font_size, Scalar (lbl_clr.blue, lbl_clr.green, lbl_clr.red), 1, 1);
       }
     }
   }
