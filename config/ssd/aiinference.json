@@ -1,17 +1,18 @@
 {
-  "xclbin-location":"/lib/firmware/xilinx/kv260-smartcam/kv260-smartcam.xclbin",
-  "vvas-library-repo": "/usr/lib/",
-  "element-mode":"inplace",
+  "attach-ppe-outbuf": false,
+  "inference-level": 1,
+  "low-latency": false,
+  "inference-max-queue": 0,
   "kernel": {
-    "library-name":"libvvas_xdpuinfer.so",
     "config": {
-      "model-name" : "ssd_adas_pruned_0_95",
-      "model-class" : "SSD",
-      "model-format" : "BGR",
-      "model-path" : "/opt/xilinx/kv260-smartcam/share/vitis_ai_library/models/",
-      "vitis-ai-preprocess" : true,
-      "performance-test" : false,
-      "debug_level" : 0
+      "batch-size": 1,
+      "model-name": "ssd_adas_pruned_0_95",
+      "model-class": "SSD",
+      "model-format": "BGR",
+      "model-path": "/opt/xilinx/kv260-smartcam/share/vitis_ai_library/models/",
+      "vitis-ai-preprocess": true,
+      "performance-test": false,
+      "debug-level": 0
     }
   }
 }
