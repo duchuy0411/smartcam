@@ -9,9 +9,8 @@
       "model-class" : "REFINEDET",
       "model-format" : "BGR",
       "model-path" : "/opt/xilinx/kv260-smartcam/share/vitis_ai_library/models/",
-      "run_time_model" : false,
-      "need_preprocess" : false,
-      "performance_test" : false,
+      "vitis-ai-preprocess" : false,
+      "performance-test" : false,
       "debug_level" : 0
     }
   }

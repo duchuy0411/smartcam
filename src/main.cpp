@@ -535,8 +535,7 @@ main (int argc, char *argv[])
 
         if (!nodet) {
             sprintf(pip + strlen(pip), " ! tee name=t \
-                    ! queue ! vvas_xmultisrc kconfig=\"%s/preprocess.json\" \
-                    ! queue ! vvas_xfilter kernels-config=\"%s/aiinference.json\" \
+                    ! queue ! vvas_xinfer preprocess-config=\"%s/preprocess.json\" infer-config=\"%s/aiinference.json\" \
                     ! ima.sink_master \
                     vvas_xmetaaffixer name=ima ima.src_master ! fakesink \
                     t. \
