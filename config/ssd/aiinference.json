@@ -9,7 +9,7 @@
       "model-class" : "SSD",
       "model-format" : "BGR",
       "model-path" : "/opt/xilinx/kv260-smartcam/share/vitis_ai_library/models/",
-      "vitis-ai-preprocess" : false,
+      "vitis-ai-preprocess" : true,
       "performance-test" : false,
       "debug_level" : 0
     }
