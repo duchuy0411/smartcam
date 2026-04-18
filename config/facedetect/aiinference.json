@@ -10,7 +10,7 @@
       "model-class": "FACEDETECT",
       "model-format": "BGR",
       "model-path": "/opt/xilinx/kv260-smartcam/share/vitis_ai_library/models/",
-      "vitis-ai-preprocess": true,
+      "vitis-ai-preprocess": false,
       "performance-test": false,
       "debug-level": 0
     }

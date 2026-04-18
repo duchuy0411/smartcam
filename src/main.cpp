@@ -535,11 +535,13 @@ main (int argc, char *argv[])
 
         if (!nodet) {
             sprintf(pip + strlen(pip), " ! tee name=t \
+                    ! queue ! vvas_xmultisrc kconfig=\"%s/preprocess.json\" \
                     ! queue ! vvas_xinfer infer-config=\"%s/aiinference.json\" \
                     ! ima.sink_master \
                     vvas_xmetaaffixer name=ima ima.src_master ! fakesink \
                     t. \
                     ! queue max-size-buffers=1 leaky=%d ! ima.sink_slave_0 ima.src_slave_0 ! queue ! vvas_xmetaconvert config-location=\"%s/metaconvert.json\" ! vvas_xoverlay ",
+                    confdir.c_str(),
                     confdir.c_str(),
                     filename? 0 : 2, confdir.c_str());
         } else if (screenfps){
